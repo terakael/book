@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: book-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: book-generator
+  template:
+    metadata:
+      labels:
+        app: book-generator
+    spec:
+      containers:
+        - name: book-generator
+          image: docker.io/terakael/qrkpgn:0.0.2
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: static-volume
+              mountPath: /app/static
+            - name: templates-volume
+              mountPath: /app/templates
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gemini-api-key
+                  key: key
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-api-key
+                  key: key
+      volumes:
+        - name: static-volume
+          hostPath:
+            path: /media/seagate/flask-static/book/static
+            type: Directory
+        - name: templates-volume
+          hostPath:
+            path: /media/seagate/flask-static/book/templates
+            type: Directory

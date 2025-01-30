@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ book_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --button-bg: #2d2d2d;
+            --button-hover: #3d3d3d;
+            --accent-color: #4a9eff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section {
+            margin: 2rem 0;
+            border-radius: 8px;
+            background-color: var(--button-bg);
+        }
+
+        .text-section {
+            font-size: 24px;
+            line-height: 1.6;
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .image-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            padding: 5px;
+        }
+
+        .image-section img {
+            max-width: 100%;
+            max-height: 600px;
+            object-fit: contain;
+        }
+
+        .home-button {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+
+        button {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            background-color: #2d3436;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            background-color: #636e72;
+        }
+
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem;
+            background-color: var(--button-bg);
+            border-radius: 8px;
+            color: var(--text-color);
+        }
+
+        /* Intersection Observer target */
+        .observer-target {
+            height: 10px;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="content-container">
+        <!-- Initial content will be inserted here -->
+    </div>
+
+    <div class="observer-target" id="observer-target"></div>
+    <div class="loading-spinner" id="loading-spinner">Loading...</div>
+
+    <div class="home-button">
+        <button onclick="window.location.href='/'"><i class="fas fa-home"></i></button>
+    </div>
+
+    <script>
+        let currentPage = 0;
+        const bookName = "{{ book_name }}";
+        let isLoading = false;
+        const container = document.getElementById('content-container');
+
+        // Initialize with first page content
+        addPageContent({
+            text: "{{ text }}",
+            image: "{{ image_data }}"
+        });
+
+        function addPageContent(data) {
+            const textSection = document.createElement('div');
+            textSection.className = 'section text-section';
+            textSection.innerHTML = `<div>${data.text}</div>`;
+            container.appendChild(textSection);
+
+            const imageSection = document.createElement('div');
+            imageSection.className = 'section image-section';
+            imageSection.innerHTML = `<img src="data:image/jpeg;base64,${data.image}" alt="Content image">`;
+            container.appendChild(imageSection);
+        }
+
+        async function loadNextPage() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            document.getElementById('loading-spinner').style.display = 'block';
+            
+            try {
+                const response = await fetch(`/api/page/${bookName}/${currentPage + 1}`);
+                const data = await response.json();
+                
+                if (data.text && data.image) {
+                    currentPage++;
+                    addPageContent(data);
+                }
+            } catch (error) {
+                console.error('Error loading next page:', error);
+            } finally {
+                isLoading = false;
+                document.getElementById('loading-spinner').style.display = 'none';
+            }
+        }
+
+        // Intersection Observer for infinite scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadNextPage();
+                }
+            });
+        }, {
+            rootMargin: '100px'
+        });
+
+        observer.observe(document.getElementById('observer-target'));
+    </script>
+</body>
+</html>
