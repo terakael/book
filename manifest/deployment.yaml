@@ -14,9 +14,11 @@ spec:
     spec:
       containers:
         - name: book-generator
-          image: docker.io/terakael/qrkpgn:0.0.2
+          image: docker.io/terakael/qrkpgn:0.0.4
           ports:
             - containerPort: 5000
+          command: ["gunicorn"]
+          args: ["-w", "4", "-b", "0.0.0.0:5000", "app:app"]
           volumeMounts:
             - name: static-volume
               mountPath: /app/static

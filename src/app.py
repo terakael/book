@@ -1,53 +1,33 @@
-# app.py
-import threading
 from flask import Flask, redirect, render_template, jsonify, request
 import os
 import base64
 
-from generator import StoryImageGenerator
+import requests
 
 app = Flask(__name__)
-
-generator = StoryImageGenerator()
-
-jobs = {}
-
-
-def run_job(job_id, description):
-    jobs[job_id]["status"] = "in progress"
-    generator.generate(job_id, description)
-    del jobs[job_id]
 
 
 def get_book_list():
     books = []
     static_dir = os.path.join(app.static_folder)
     for book in os.listdir(static_dir):
-        if os.path.isdir(os.path.join(static_dir, book)):
-            pages = [
-                int(page)
-                for page in os.listdir(os.path.join("static", book))
-                if page.isdigit()
-            ]
-            if pages:  # If the book has any pages
-                last_page = max(pages)
-                _, cover = get_page_content(book, last_page)
-            else:
-                cover = ""
-
-            books.append({"title": book, "cover": cover})
+        books.append({"title": book, "cover": get_thumbnail_b64(book)})
 
     return books
+
+
+def get_thumbnail_b64(title):
+    book_dir = os.path.join(app.static_folder, title)
+    with open(os.path.join(book_dir, "thumbnail.jpg"), "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
 
 def get_page_content(book, page):
     page_dir = os.path.join(app.static_folder, book, str(page))
 
-    # Read text content
     with open(os.path.join(page_dir, "text.txt"), "r") as f:
         text = f.read()
 
-    # Read and encode image
     image_file = next(
         f for f in os.listdir(page_dir) if f.endswith((".jpg", ".png", ".jpeg"))
     )
@@ -96,13 +76,15 @@ def get_page(book_name, page):
 @app.route("/add", methods=["GET", "POST"])
 def add_book():
     if request.method == "POST":
-        title = request.form.get("title")
         description = request.form.get("description")
 
-        job_id = title
-        jobs[job_id] = {"status": "queued"}
-        thread = threading.Thread(target=run_job, args=(job_id, description))
-        thread.start()
+        response = requests.post(
+            "http://airflow-scheduler/dags/generate_book/dagRuns",
+            json={"conf": {"story_description": description}},
+        )
+
+        if response.status != 200:
+            print(response.content)
 
         return redirect("/")
 
